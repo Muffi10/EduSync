@@ -1,7 +1,12 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  
+  trailingSlash: true,
+  images: {
+    domains: ['lh3.googleusercontent.com', 'firebasestorage.googleapis.com'],
+    unoptimized: true, // Required for static export
+  }
 };
 
 export default nextConfig;
