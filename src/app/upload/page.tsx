@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { storage } from "@/lib/firebase";
@@ -18,6 +18,14 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [videoPreview, setVideoPreview] = useState("");
+  const [thumbnailPreview, setThumbnailPreview] = useState("");
+  
+  // Add hydration guard
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "video" | "thumbnail") => {
     const file = e.target.files?.[0];
@@ -25,10 +33,16 @@ export default function UploadPage() {
 
     if (type === "video") {
       setVideoFile(file);
-      // Create preview URL
-      setVideoPreview(URL.createObjectURL(file));
+      // Only create preview URL on client side
+      if (isClient) {
+        setVideoPreview(URL.createObjectURL(file));
+      }
     } else {
       setThumbnailFile(file);
+      // Only create preview URL on client side
+      if (isClient) {
+        setThumbnailPreview(URL.createObjectURL(file));
+      }
     }
   };
 
@@ -141,6 +155,26 @@ export default function UploadPage() {
     }
   };
 
+  // Don't render until hydrated
+  if (!isClient) {
+    return (
+      <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-lg shadow">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <div className="h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+            <div className="space-y-4">
+              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-900 rounded-lg shadow">
       <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Upload Video</h1>
@@ -189,16 +223,19 @@ export default function UploadPage() {
               Thumbnail (Optional)
             </label>
             <div className="flex items-center space-x-4">
-              {thumbnailFile ? (
+              {thumbnailFile && thumbnailPreview ? (
                 <div className="relative w-32 h-20 rounded overflow-hidden">
                   <Image
-                    src={URL.createObjectURL(thumbnailFile)}
+                    src={thumbnailPreview}
                     alt="Thumbnail preview"
                     fill
                     className="object-cover"
                   />
                   <button 
-                    onClick={() => setThumbnailFile(null)}
+                    onClick={() => {
+                      setThumbnailFile(null);
+                      setThumbnailPreview("");
+                    }}
                     className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 hover:bg-black/70"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

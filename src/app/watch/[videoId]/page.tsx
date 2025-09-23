@@ -179,7 +179,7 @@ const handleLike = async () => {
         {/* Video Stats and Actions */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div className="flex items-center space-x-2 text-gray-600 text-sm">
-            <span>{views.toLocaleString()} views</span>
+            <span>{views} views</span>
             <span>•</span>
             <span>{new Date(video.createdAt).toLocaleDateString()}</span>
           </div>

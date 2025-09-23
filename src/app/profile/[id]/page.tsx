@@ -38,28 +38,30 @@ export default function ProfilePage() {
   const [showSidebar, setShowSidebar] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+  // hydration guard
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => setIsClient(true), []);
+
   // Convert Firestore timestamp to readable date
   const formatDate = (timestamp: any): string => {
     try {
       if (!timestamp) return "Unknown date";
-      
       if (timestamp?.seconds) {
-        return new Date(timestamp.seconds * 1000).toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
+        return new Date(timestamp.seconds * 1000).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         });
       }
-      
-      if (typeof timestamp === 'number') {
-        const date = timestamp > 1e10 ? new Date(timestamp) : new Date(timestamp * 1000);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
+      if (typeof timestamp === "number") {
+        const date =
+          timestamp > 1e10 ? new Date(timestamp) : new Date(timestamp * 1000);
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         });
       }
-      
       return "Unknown date";
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -78,41 +80,84 @@ export default function ProfilePage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch profile and videos data
+  // Fetch profile and videos (no timeout/abort)
   useEffect(() => {
+    if (!isClient || !id) return;
+
     const fetchAll = async () => {
       setLoading(true);
+      setError(null);
+
       try {
-        const [profileRes, videosRes] = await Promise.all([
-          fetch(`/api/users/${id}`),
-          fetch(`/api/users/${id}/videos`),
-        ]);
-        
-        if (!profileRes.ok) throw new Error("Failed to fetch profile");
-        if (!videosRes.ok) throw new Error("Failed to fetch videos");
+        console.log(`Fetching profile for ID: ${id}`);
+        const profileRes = await fetch(`/api/users/${id}`, {
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        });
+
+        if (!profileRes.ok) {
+          const errorText = await profileRes.text();
+          console.error(
+            `Profile fetch failed with status ${profileRes.status}: ${errorText}`
+          );
+          if (profileRes.status === 404) throw new Error("User not found");
+          if (profileRes.status >= 500) throw new Error("Server error. Please try again later.");
+          if (profileRes.status === 429) throw new Error("Too many requests. Please wait a moment.");
+          throw new Error(`Failed to fetch profile (${profileRes.status})`);
+        }
 
         const profileJson = await profileRes.json();
-        const videosJson = await videosRes.json();
-
         setUser(profileJson);
-        setVideos(Array.isArray(videosJson) ? videosJson : []);
+
+        console.log(`Fetching videos for ID: ${id}`);
+        const videosRes = await fetch(`/api/users/${id}/videos`, {
+          headers: {
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+        });
+
+        if (!videosRes.ok) {
+          const errorText = await videosRes.text();
+          console.error(
+            `Videos fetch failed with status ${videosRes.status}: ${errorText}`
+          );
+          console.warn("Could not fetch videos, using empty array");
+          setVideos([]);
+        } else {
+          const videosJson = await videosRes.json();
+          setVideos(Array.isArray(videosJson) ? videosJson : []);
+        }
       } catch (err: unknown) {
         console.error("Error fetching profile/videos:", err);
-        setError(err instanceof Error ? err.message : "Error loading profile");
+        if (err instanceof Error) {
+          if (err.message.includes("fetch")) {
+            setError("Network error. Please check your connection and try again.");
+          } else {
+            setError(err.message);
+          }
+        } else {
+          setError("An unexpected error occurred. Please try again.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAll();
+    const timeoutId = setTimeout(fetchAll, 100);
 
     const auth = getAuth();
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUid(user?.uid || null);
     });
 
-    return () => unsubscribe();
-  }, [id]);
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
+  }, [id, isClient]);
 
   const isOwner = currentUid && currentUid === id;
 
@@ -130,7 +175,10 @@ export default function ProfilePage() {
 
       const res = await fetch(`/api/video/${videoId}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${idToken}` },
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
       });
 
       if (!res.ok) {
@@ -138,7 +186,7 @@ export default function ProfilePage() {
         throw new Error(err.error || err.message || "Failed to delete video");
       }
 
-      setVideos(prev => prev.filter(v => v.id !== videoId));
+      setVideos((prev) => prev.filter((v) => v.id !== videoId));
     } catch (err: unknown) {
       console.error("Delete failed:", err);
       setError(err instanceof Error ? err.message : "Delete failed");
@@ -154,11 +202,43 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.push('/login');
+      router.push("/login");
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
+
+  const handleRetry = () => {
+    window.location.reload();
+  };
+
+  // Don't render until hydrated to prevent SSR/client mismatch
+  if (!isClient) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Profile Header Skeleton */}
+        <div className="flex flex-col md:flex-row items-center gap-8 mb-8">
+          <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+          <div className="flex-1 space-y-4">
+            <div className="h-8 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            <div className="h-4 w-96 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+          </div>
+        </div>
+        
+        {/* Videos Grid Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
+              <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+              <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (loading) return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -181,6 +261,35 @@ export default function ProfilePage() {
             <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
           </div>
         ))}
+      </div>
+    </div>
+  );
+
+  // Enhanced error state with retry option
+  if (error && !user) return (
+    <div className="flex flex-col justify-center items-center h-screen px-4">
+      <div className="text-center max-w-md">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mb-4 mx-auto">
+          <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-semibold mb-2">Unable to Load Profile</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+        <div className="space-x-4">
+          <button
+            onClick={handleRetry}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          >
+            Try Again
+          </button>
+          <button
+            onClick={() => router.push('/')}
+            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md transition-colors"
+          >
+            Go Home
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -301,10 +410,18 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Error */}
-      {error && (
-        <div className="mb-6 p-3 bg-red-50 text-red-600 rounded-md text-sm">
-          {error}
+      {/* Error Display (non-fatal errors) */}
+      {error && user && (
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-yellow-400 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 18.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Warning</h4>
+              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">{error}</p>
+            </div>
+          </div>
         </div>
       )}
 
