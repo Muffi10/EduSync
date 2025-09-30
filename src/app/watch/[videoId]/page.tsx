@@ -21,6 +21,7 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
   const [likeCount, setLikeCount] = useState(0);
   const [creator, setCreator] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isReporting, setIsReporting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -89,36 +90,36 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
     fetchData();
   }, [videoId, router]);
 
-const handleLike = async () => {
-  if (!token || !video) return;
+  const handleLike = async () => {
+    if (!token || !video) return;
 
-  const newLikeStatus = !isLiked;
-  setIsLiked(newLikeStatus);
-  setLikeCount((prev) => (newLikeStatus ? prev + 1 : prev - 1));
+    const newLikeStatus = !isLiked;
+    setIsLiked(newLikeStatus);
+    setLikeCount((prev) => (newLikeStatus ? prev + 1 : prev - 1));
 
-  try {
-    const response = await fetch("/api/video/like", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        videoId,
-        like: newLikeStatus,
-      }),
-    });
+    try {
+      const response = await fetch("/api/video/like", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          videoId,
+          like: newLikeStatus,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error("Failed to update like");
+      if (!response.ok) {
+        throw new Error("Failed to update like");
+      }
+    } catch (error) {
+      console.error("Like error:", error);
+      // Revert UI if API call fails
+      setIsLiked(!newLikeStatus);
+      setLikeCount((prev) => (newLikeStatus ? prev - 1 : prev + 1));
     }
-  } catch (error) {
-    console.error("Like error:", error);
-    // Revert UI if API call fails
-    setIsLiked(!newLikeStatus);
-    setLikeCount((prev) => (newLikeStatus ? prev - 1 : prev + 1));
-  }
-};
+  };
 
   const handleFollow = async () => {
     if (!token || !video || !creator) return;
@@ -141,6 +142,59 @@ const handleLike = async () => {
     } catch (error) {
       // Revert if failed
       setIsFollowing(!newFollowStatus);
+    }
+  };
+
+  const handleReport = async () => {
+    if (!token || !video) return;
+
+    if (!confirm("Are you sure you want to report this video?")) return;
+
+    setIsReporting(true);
+
+    try {
+      const response = await fetch("/api/video/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ videoId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to report video");
+      }
+
+      alert("Video reported successfully. Thank you for helping keep our community safe.");
+    } catch (error) {
+      console.error("Report error:", error);
+      alert("Failed to report video. Please try again.");
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
+  // Format date safely
+  const formatDate = (dateValue: any) => {
+    if (!dateValue) return "Date unknown";
+    
+    try {
+      // Handle Firestore Timestamp
+      if (dateValue?.toDate && typeof dateValue.toDate === 'function') {
+        return dateValue.toDate().toLocaleDateString();
+      }
+      
+      // Handle ISO string or number
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) {
+        return "Date unknown";
+      }
+      
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Date unknown";
     }
   };
 
@@ -169,7 +223,9 @@ const handleLike = async () => {
           className="w-full h-full"
           src={video.videoUrl}
           poster={video.thumbnailUrl || ""}
-        />
+        >
+          Your browser does not support the video tag.
+        </video>
       </div>
 
       {/* Video Info Section */}
@@ -178,20 +234,21 @@ const handleLike = async () => {
 
         {/* Video Stats and Actions */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-          <div className="flex items-center space-x-2 text-gray-600 text-sm">
-            <span>{views} views</span>
+          <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 text-sm">
+            <span>{views.toLocaleString()} views</span>
             <span>•</span>
-            <span>{new Date(video.createdAt).toLocaleDateString()}</span>
+            <span>{formatDate(video.createdAt)}</span>
           </div>
 
           <div className="flex items-center space-x-2">
             <button
               onClick={handleLike}
+              disabled={!token}
               className={`flex items-center space-x-1 px-3 py-1.5 rounded-full ${
                 isLiked
-                  ? "bg-blue-100 text-blue-600"
-                  : "bg-gray-100 hover:bg-gray-200"
-              } cursor-pointer transition`}
+                  ? "bg-blue-500 text-white hover:bg-blue-600"
+                  : "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              } ${!token ? "opacity-50 cursor-not-allowed" : "cursor-pointer"} transition`}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -214,7 +271,9 @@ const handleLike = async () => {
               <button
                 onClick={handleFollow}
                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-full ${
-                  isFollowing ? "bg-gray-200" : "bg-gray-100 hover:bg-gray-200"
+                  isFollowing
+                    ? "bg-gray-300 text-gray-800 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
+                    : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
                 } cursor-pointer transition`}
               >
                 <svg
@@ -229,7 +288,7 @@ const handleLike = async () => {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                      d="M5 13l4 4L19 7"
                     />
                   ) : (
                     <path
@@ -241,6 +300,32 @@ const handleLike = async () => {
                   )}
                 </svg>
                 <span>{isFollowing ? "Following" : "Follow"}</span>
+              </button>
+            )}
+
+            {user?.uid && (
+              <button
+                onClick={handleReport}
+                disabled={isReporting}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-full bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800 ${
+                  isReporting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                } transition`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"
+                  />
+                </svg>
+                <span>{isReporting ? "Reporting..." : "Report"}</span>
               </button>
             )}
           </div>
@@ -256,7 +341,7 @@ const handleLike = async () => {
               {video.tags.map((tag: string) => (
                 <span
                   key={tag}
-                  className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-sm rounded-full cursor-pointer hover:bg-gray-300 dark:hover:bg-gray-600"
+                  className="px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200 text-sm rounded-full cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800"
                 >
                   #{tag}
                 </span>
@@ -276,7 +361,7 @@ const handleLike = async () => {
             <div className="relative h-10 w-10 rounded-full overflow-hidden">
               <Image
                 src={creator.photoURL || "/images/default-avatar.png"}
-                alt={creator.displayName}
+                alt={`${creator.displayName}'s profile picture`}
                 fill
                 className="object-cover"
               />
@@ -291,8 +376,8 @@ const handleLike = async () => {
               onClick={handleFollow}
               className={`px-4 py-1.5 rounded-full text-sm font-medium ${
                 isFollowing
-                  ? "bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
-                  : "bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  ? "bg-gray-300 text-gray-800 hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500"
+                  : "bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
               } cursor-pointer transition`}
             >
               {isFollowing ? "Following" : "Follow"}
