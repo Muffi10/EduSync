@@ -1,4 +1,4 @@
-//api/comment/route.ts
+// src/app/api/comment/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyFirebaseToken } from "@/lib/auth";
 import { db } from "@/lib/firebase";
@@ -35,29 +35,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "`videoId` and `text` are required" }, { status: 400 });
   }
 
+  // Add comment to Firestore
   const docRef = await addDoc(collection(db, "comments"), {
     videoId,
     userId: decoded.uid,
     text,
     createdAt: serverTimestamp(),
+    likes: [],
   });
+
+  // Fetch video data
   const videoSnap = await getDoc(doc(db, "videos", videoId));
-if (videoSnap.exists()) {
-  const ownerId = videoSnap.data().ownerId;
-  if (ownerId && ownerId !== decoded.uid) {
-    await addDoc(collection(db, `users/${ownerId}/notifications`), {
-      type: "comment",
-      fromUserId: decoded.uid,
-      videoId,
-      message: `${decoded.name || "Someone"} commented on your video.`,
-      read: false,
-      createdAt: Date.now(),
+  if (videoSnap.exists()) {
+    const videoData = videoSnap.data();
+    const ownerId = videoData.ownerId;
+    
+    // Create notification if commenting on someone else's video
+    if (ownerId && ownerId !== decoded.uid) {
+      // Fetch commenter's data for notification
+      const commenterSnap = await getDoc(doc(db, "users", decoded.uid));
+      const commenterData = commenterSnap.exists() ? commenterSnap.data() : {};
+      const commenterName = commenterData.displayName || commenterData.username || "Someone";
+
+      await addDoc(collection(db, `users/${ownerId}/notifications`), {
+        type: "comment",
+        fromUserId: decoded.uid,
+        videoId,
+        commentId: docRef.id,
+        message: `commented on your video "${videoData.title}"`,
+        read: false,
+        createdAt: Date.now(),
+      });
+    }
+
+    // Increment comment count on video
+    await updateDoc(doc(db, "videos", videoId), {
+      commentsCount: increment(1),
     });
   }
-}
-await updateDoc(doc(db, "videos", videoId), {
-  commentsCount: increment(1),
-});
 
   return NextResponse.json({ message: "Comment added", commentId: docRef.id });
 }

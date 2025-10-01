@@ -1,6 +1,7 @@
+// src/app/api/follow/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, addDoc, collection } from "firebase/firestore";
 import { verifyFirebaseToken } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
         return {
           id: uid,
           username: uData.username || uData.displayName || "Unknown",
+          displayName: uData.displayName || "Unknown",
           profilePic: uData.photoURL || "/default-avatar.png",
           isFollowing,
         };
@@ -87,9 +89,20 @@ async function handleFollowAction(req: NextRequest, follow: boolean) {
     }
 
     if (follow) {
+      // Update following/followers arrays
       await updateDoc(currentUserRef, { following: arrayUnion(targetUserId) });
       await updateDoc(targetUserRef, { followers: arrayUnion(currentUserId) });
+
+      // ✅ CREATE NOTIFICATION FOR FOLLOW
+      await addDoc(collection(db, `users/${targetUserId}/notifications`), {
+        type: "follow",
+        fromUserId: currentUserId,
+        message: "started following you",
+        read: false,
+        createdAt: Date.now(),
+      });
     } else {
+      // Unfollow - just remove from arrays, no notification
       await updateDoc(currentUserRef, { following: arrayRemove(targetUserId) });
       await updateDoc(targetUserRef, { followers: arrayRemove(currentUserId) });
     }
