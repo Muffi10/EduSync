@@ -1,3 +1,4 @@
+//src/app/watch/[videoId]/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -63,10 +64,22 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
             setIsFollowing(isFollowing);
           }
 
-          // Register view if not already viewed
+          // Check if video is already in history
           const historyDoc = await getDoc(
             doc(db, `users/${currentUser.uid}/history`, videoId)
           );
+
+          // Add to watch history (updates timestamp if already exists)
+          await fetch("/api/history", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ videoId }),
+          });
+
+          // Register view only if not already viewed
           if (!historyDoc.exists()) {
             await fetch("/api/video/view", {
               method: "POST",
