@@ -28,7 +28,6 @@ export default function WatchHistoryPage() {
   const [isOwnHistory, setIsOwnHistory] = useState(false);
   const router = useRouter();
 
-  // Hydration guard
   const [isClient, setIsClient] = useState(false);
   useEffect(() => setIsClient(true), []);
 
@@ -40,17 +39,50 @@ export default function WatchHistoryPage() {
       const user = auth.currentUser;
 
       if (!user) {
-        router.push("/login");
+        await new Promise((r) => setTimeout(r, 1000));
+        const currentUser = getAuth().currentUser;
+        if (!currentUser) {
+          router.push("/login");
+          return;
+        }
+        setCurrentUserId(currentUser.uid);
+        const isOwn = currentUser.uid === userId;
+        setIsOwnHistory(isOwn);
+        if (!isOwn) {
+          setLoading(false);
+          return;
+        }
+        try {
+          const idToken = await currentUser.getIdToken();
+          setToken(idToken);
+          const res = await fetch("/api/history", {
+            headers: { Authorization: `Bearer ${idToken}` },
+          });
+          if (!res.ok) throw new Error("Failed to fetch history");
+          const data = await res.json();
+
+          // ✅ Normalize timestamps safely
+          const normalized = (data.history || []).map((item: any) => ({
+            ...item,
+            watchedAt:
+              typeof item.watchedAt === "number"
+                ? item.watchedAt
+                : item.watchedAt?.seconds
+                ? item.watchedAt.seconds * 1000
+                : 0,
+          }));
+          setHistory(normalized);
+        } catch (err) {
+          console.error("Error fetching history:", err);
+        } finally {
+          setLoading(false);
+        }
         return;
       }
 
       setCurrentUserId(user.uid);
-      
-      // Check if viewing own history
       const isOwn = user.uid === userId;
       setIsOwnHistory(isOwn);
-
-      // Only fetch if it's own history
       if (!isOwn) {
         setLoading(false);
         return;
@@ -59,19 +91,25 @@ export default function WatchHistoryPage() {
       try {
         const idToken = await user.getIdToken();
         setToken(idToken);
-
-        const response = await fetch("/api/history", {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
+        const res = await fetch("/api/history", {
+          headers: { Authorization: `Bearer ${idToken}` },
         });
+        if (!res.ok) throw new Error("Failed to fetch history");
+        const data = await res.json();
 
-        if (!response.ok) throw new Error("Failed to fetch history");
-
-        const data = await response.json();
-        setHistory(data.history || []);
-      } catch (error) {
-        console.error("Error fetching history:", error);
+        // ✅ Normalize timestamps safely
+        const normalized = (data.history || []).map((item: any) => ({
+          ...item,
+          watchedAt:
+            typeof item.watchedAt === "number"
+              ? item.watchedAt
+              : item.watchedAt?.seconds
+              ? item.watchedAt.seconds * 1000
+              : 0,
+        }));
+        setHistory(normalized);
+      } catch (err) {
+        console.error("Error fetching history:", err);
       } finally {
         setLoading(false);
       }
@@ -148,16 +186,11 @@ export default function WatchHistoryPage() {
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    const weeks = Math.floor(days / 7);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
 
-    if (years > 0) return `${years} year${years > 1 ? "s" : ""} ago`;
-    if (months > 0) return `${months} month${months > 1 ? "s" : ""} ago`;
-    if (weeks > 0) return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
     if (days > 0) return `${days} day${days > 1 ? "s" : ""} ago`;
     if (hours > 0) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
     if (minutes > 0) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+    if (seconds > 30) return `${seconds} second${seconds > 1 ? "s" : ""} ago`;
     return "Just now";
   };
 
@@ -171,23 +204,30 @@ export default function WatchHistoryPage() {
     };
 
     const now = Date.now();
-    const today = new Date(now).setHours(0, 0, 0, 0);
-    const yesterday = today - 86400000;
-    const weekAgo = today - 7 * 86400000;
-    const monthAgo = today - 30 * 86400000;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    
+    const weekAgo = new Date(todayStart);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const monthAgo = new Date(todayStart);
+    monthAgo.setDate(monthAgo.getDate() - 30);
 
     items.forEach((item) => {
       if (!item.watchedAt) return;
       
-      const itemDate = new Date(item.watchedAt).setHours(0, 0, 0, 0);
+      const watchedDate = new Date(item.watchedAt);
 
-      if (itemDate === today) {
+      if (watchedDate >= todayStart) {
         groups["Today"].push(item);
-      } else if (itemDate === yesterday) {
+      } else if (watchedDate >= yesterdayStart) {
         groups["Yesterday"].push(item);
-      } else if (item.watchedAt >= weekAgo) {
+      } else if (watchedDate >= weekAgo) {
         groups["This Week"].push(item);
-      } else if (item.watchedAt >= monthAgo) {
+      } else if (watchedDate >= monthAgo) {
         groups["This Month"].push(item);
       } else {
         groups["Older"].push(item);
@@ -209,28 +249,6 @@ export default function WatchHistoryPage() {
     return (
       <div className="max-w-6xl mx-auto p-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-          <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-        </div>
-        <div className="space-y-4">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex gap-4 p-3">
-              <div className="w-48 h-27 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-                <div className="h-4 w-3/4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="max-w-6xl mx-auto p-4">
-        <div className="flex items-center justify-between mb-6">
           <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
           <div className="h-10 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         </div>

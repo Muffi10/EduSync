@@ -13,10 +13,9 @@ import {
   deleteDoc,
   writeBatch,
   limit,
-  serverTimestamp,
 } from "firebase/firestore";
 
-// GET: Fetch user's watch history
+// GET: Fetch user's watch history with video details
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -30,18 +29,52 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 });
     }
 
-    // Fetch watch history for the user
     const historyRef = collection(db, `users/${decoded.uid}/history`);
     const q = query(historyRef, orderBy("watchedAt", "desc"), limit(100));
-    
     const snapshot = await getDocs(q);
-    
-    const history = snapshot.docs.map((docSnap) => ({
-      id: docSnap.id,
-      ...docSnap.data(),
-    }));
 
-    return NextResponse.json({ history });
+    const history = await Promise.all(
+      snapshot.docs.map(async (docSnap) => {
+        const historyData = docSnap.data();
+        const videoId = historyData.videoId;
+
+        try {
+          const videoRef = doc(db, "videos", videoId);
+          const videoSnap = await getDoc(videoRef);
+          if (!videoSnap.exists()) return null;
+
+          const videoData = videoSnap.data();
+
+          const channelRef = doc(db, "users", videoData.ownerId);
+          const channelSnap = await getDoc(channelRef);
+          const channelData = channelSnap.exists() ? channelSnap.data() : {};
+
+          // ✅ Convert watchedAt to milliseconds if it's a Firestore Timestamp
+          const watchedAt =
+            typeof historyData.watchedAt === "number"
+              ? historyData.watchedAt
+              : historyData.watchedAt?.toMillis?.() || 0;
+
+          return {
+            id: docSnap.id,
+            videoId,
+            watchedAt,
+            videoTitle: videoData.title || "Untitled Video",
+            videoThumbnail: videoData.thumbnailUrl || "/images/default-thumbnail.png",
+            videoDuration: videoData.duration || 0,
+            channelId: videoData.ownerId,
+            channelName: channelData.displayName || channelData.username || "Unknown Channel",
+            channelPhoto: channelData.photoURL || "/images/default-avatar.png",
+          };
+        } catch (error) {
+          console.error(`Error fetching video ${videoId}:`, error);
+          return null;
+        }
+      })
+    );
+
+    const validHistory = history.filter((item) => item !== null);
+    return NextResponse.json({ history: validHistory });
   } catch (error) {
     console.error("Error fetching watch history:", error);
     return NextResponse.json({ error: "Failed to fetch watch history" }, { status: 500 });
@@ -63,42 +96,20 @@ export async function POST(req: NextRequest) {
     }
 
     const { videoId } = await req.json();
-
     if (!videoId) {
       return NextResponse.json({ error: "videoId is required" }, { status: 400 });
     }
 
-    // Fetch video details
     const videoRef = doc(db, "videos", videoId);
     const videoSnap = await getDoc(videoRef);
-
     if (!videoSnap.exists()) {
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
-    const videoData = videoSnap.data();
-
-    // Fetch channel details
-    const channelRef = doc(db, "users", videoData.ownerId);
-    const channelSnap = await getDoc(channelRef);
-    const channelData = channelSnap.exists() ? channelSnap.data() : {};
-
-    // Create or update history entry
     const historyDocRef = doc(db, `users/${decoded.uid}/history`, videoId);
-    
     await setDoc(historyDocRef, {
       videoId,
       watchedAt: Date.now(),
-      
-      // Video details
-      videoTitle: videoData.title,
-      videoThumbnail: videoData.thumbnailUrl || "/images/default-thumbnail.png",
-      videoDuration: videoData.duration || 0,
-      
-      // Channel details
-      channelId: videoData.ownerId,
-      channelName: channelData.displayName || channelData.username || "Unknown",
-      channelPhoto: channelData.photoURL || "/images/default-avatar.png",
     });
 
     return NextResponse.json({ success: true, message: "Watch history updated" });
@@ -125,21 +136,17 @@ export async function DELETE(req: NextRequest) {
     const { videoId } = await req.json();
 
     if (videoId) {
-      // Delete specific video from history
       const historyDocRef = doc(db, `users/${decoded.uid}/history`, videoId);
       await deleteDoc(historyDocRef);
       return NextResponse.json({ success: true, message: "Video removed from history" });
     } else {
-      // Clear all watch history
       const historyRef = collection(db, `users/${decoded.uid}/history`);
       const snapshot = await getDocs(historyRef);
-
       const batch = writeBatch(db);
-      snapshot.docs.forEach((docSnap) => {
-        batch.delete(docSnap.ref);
-      });
 
+      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
       await batch.commit();
+
       return NextResponse.json({ success: true, message: "All watch history cleared" });
     }
   } catch (error) {
