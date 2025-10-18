@@ -23,6 +23,7 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
   const [creator, setCreator] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isReporting, setIsReporting] = useState(false);
+  const [isCreatingParty, setIsCreatingParty] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -128,7 +129,6 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
       }
     } catch (error) {
       console.error("Like error:", error);
-      // Revert UI if API call fails
       setIsLiked(!newLikeStatus);
       setLikeCount((prev) => (newLikeStatus ? prev - 1 : prev + 1));
     }
@@ -153,7 +153,6 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
         }),
       });
     } catch (error) {
-      // Revert if failed
       setIsFollowing(!newFollowStatus);
     }
   };
@@ -188,17 +187,46 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
     }
   };
 
-  // Format date safely
+  const handleCreateWatchParty = async () => {
+    if (!token || !video) return;
+
+    setIsCreatingParty(true);
+
+    try {
+      const response = await fetch("/api/watch-party/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          videoId,
+          title: `Watch Party: ${video.title}`,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create watch party");
+      }
+
+      const { partyId } = await response.json();
+      router.push(`/watch-party/${partyId}`);
+    } catch (error) {
+      console.error("Watch party error:", error);
+      alert("Failed to create watch party. Please try again.");
+    } finally {
+      setIsCreatingParty(false);
+    }
+  };
+
   const formatDate = (dateValue: any) => {
     if (!dateValue) return "Date unknown";
     
     try {
-      // Handle Firestore Timestamp
       if (dateValue?.toDate && typeof dateValue.toDate === 'function') {
         return dateValue.toDate().toLocaleDateString();
       }
       
-      // Handle ISO string or number
       const date = new Date(dateValue);
       if (isNaN(date.getTime())) {
         return "Date unknown";
@@ -253,7 +281,7 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
             <span>{formatDate(video.createdAt)}</span>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-wrap">
             <button
               onClick={handleLike}
               disabled={!token}
@@ -313,6 +341,33 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
                   )}
                 </svg>
                 <span>{isFollowing ? "Following" : "Follow"}</span>
+              </button>
+            )}
+
+            {/* NEW: Watch Party Button */}
+            {user?.uid && (
+              <button
+                onClick={handleCreateWatchParty}
+                disabled={isCreatingParty}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 ${
+                  isCreatingParty ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                } transition`}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                <span>{isCreatingParty ? "Creating..." : "Watch Party"}</span>
               </button>
             )}
 

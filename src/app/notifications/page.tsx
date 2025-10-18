@@ -1,3 +1,4 @@
+//src/app/notifications/page.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
@@ -7,7 +8,7 @@ import Link from "next/link";
 
 interface Notification {
   id: string;
-  type: "like" | "comment" | "follow";
+  type: "like" | "comment" | "follow" | "watch_party_invite";
   message: string;
   read: boolean;
   createdAt: number;
@@ -26,6 +27,13 @@ interface Notification {
     id: string;
     text: string;
   } | null;
+  partyId?: string;
+  partyTitle?: string;
+  videoTitle?: string;
+  videoThumbnail?: string;
+  partyLink?: string;
+  partyActive?: boolean;
+  fromUserId?: string;
 }
 
 export default function NotificationsPage() {
@@ -144,6 +152,14 @@ export default function NotificationsPage() {
             </svg>
           </div>
         );
+      case "watch_party_invite":
+        return (
+          <div className="flex-shrink-0">
+            <svg className="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+            </svg>
+          </div>
+        );
       default:
         return null;
     }
@@ -172,7 +188,34 @@ export default function NotificationsPage() {
     if (notification.type === "follow") {
       return notification.fromUser ? `/channel/${notification.fromUser.username}` : "#";
     }
+    // Watch party invites don't have a direct link - handled by button instead
+    if (notification.type === "watch_party_invite") {
+      return "#";
+    }
     return "#";
+  };
+
+  const handleJoinWatchParty = (notification: Notification, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Try to get partyId from notification.partyId or extract from partyLink
+    let partyId = notification.partyId;
+    
+    if (!partyId && notification.partyLink) {
+      // Extract partyId from partyLink like "/watch-party/{partyId}"
+      const match = notification.partyLink.match(/\/watch-party\/([^\/]+)/);
+      if (match && match[1]) {
+        partyId = match[1];
+      }
+    }
+    
+    if (partyId) {
+      markAsRead([notification.id]);
+      router.push(`/watch-party/${partyId}`);
+    } else {
+      console.error("No partyId found in notification:", notification);
+    }
   };
 
   const filteredNotifications = notifications.filter(notification => 
@@ -271,85 +314,127 @@ export default function NotificationsPage() {
         </div>
       ) : (
         <div className="space-y-1">
-          {filteredNotifications.map((notification) => (
-            <Link
-              key={notification.id}
-              href={getNotificationLink(notification)}
-              onClick={() => {
-                if (!notification.read) {
-                  markAsRead([notification.id]);
-                }
-              }}
-              className={`flex items-start gap-3 p-3 cursor-pointer transition ${
-                notification.read
-                  ? "bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                  : "bg-blue-50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/20"
-              } rounded-lg`}
-            >
-              {/* Profile Picture */}
-              <div className="flex-shrink-0">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
-                  <Image
-                    src={notification.fromUser?.photoURL || "/images/default-avatar.png"}
-                    alt={`${notification.fromUser?.displayName || "User"}'s profile picture`}
-                    fill
-                    className="object-cover"
-                  />
+          {filteredNotifications.map((notification) => {
+            const isWatchPartyInvite = notification.type === "watch_party_invite";
+            const linkHref = getNotificationLink(notification);
+            
+            return (
+              <Link
+                key={notification.id}
+                href={isWatchPartyInvite ? "#" : linkHref}
+                onClick={(e) => {
+                  if (!isWatchPartyInvite && !notification.read) {
+                    markAsRead([notification.id]);
+                  }
+                  if (isWatchPartyInvite) {
+                    e.preventDefault();
+                  }
+                }}
+                className={`flex items-start gap-3 p-3 cursor-pointer transition ${
+                  notification.read
+                    ? "bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    : "bg-blue-50 dark:bg-blue-900/10 hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                } rounded-lg`}
+              >
+                {/* Profile Picture */}
+                <div className="flex-shrink-0">
+                  <div className="relative w-12 h-12 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
+                    <Image
+                      src={notification.fromUser?.photoURL || "/images/default-avatar.png"}
+                      alt={`${notification.fromUser?.displayName || "User"}'s profile picture`}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Notification Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white hover:underline">
-                        {notification.fromUser?.displayName || "Someone"}
-                      </span>
-                      {getNotificationIcon(notification.type)}
+                {/* Notification Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-white hover:underline">
+                          {notification.fromUser?.displayName || "Someone"}
+                        </span>
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
+                        {notification.message}
+                      </p>
+                      
+                      {/* Comment preview */}
+                      {notification.commentInfo && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 rounded mt-2">
+                          {notification.commentInfo.text}
+                        </p>
+                      )}
+                      
+                      {/* Watch Party Join Button */}
+                      {isWatchPartyInvite && notification.partyActive && (notification.partyId || notification.partyLink) && (
+                        <button
+                          onClick={(e) => handleJoinWatchParty(notification, e)}
+                          className="mt-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium rounded-lg hover:from-purple-600 hover:to-pink-600 transition"
+                        >
+                          Join Watch Party
+                        </button>
+                      )}
+
+                      {/* Party Ended Message */}
+                      {isWatchPartyInvite && notification.partyActive === false && (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 italic">
+                          This watch party has ended
+                        </p>
+                      )}
+                      
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        {getTimeAgo(notification.createdAt)}
+                      </p>
                     </div>
                     
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-                      {notification.message}
-                    </p>
-                    
-                    {/* Comment preview */}
-                    {notification.commentInfo && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 rounded mt-2">
-                        {notification.commentInfo.text}
-                      </p>
+                    {/* Unread indicator */}
+                    {!notification.read && (
+                      <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
                     )}
-                    
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      {getTimeAgo(notification.createdAt)}
-                    </p>
                   </div>
-                  
-                  {/* Unread indicator */}
-                  {!notification.read && (
-                    <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+
+                  {/* Video Thumbnail (for likes and comments) */}
+                  {notification.videoInfo && (notification.type === "like" || notification.type === "comment") && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="relative w-16 h-9 rounded overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-700">
+                        <Image
+                          src={notification.videoInfo.thumbnailUrl}
+                          alt={notification.videoInfo.title}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 flex-1">
+                        {notification.videoInfo.title}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Watch Party Thumbnail */}
+                  {isWatchPartyInvite && notification.videoThumbnail && notification.videoTitle && (
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="relative w-16 h-9 rounded overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-700">
+                        <Image
+                          src={notification.videoThumbnail}
+                          alt={notification.videoTitle}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 flex-1">
+                        {notification.videoTitle}
+                      </p>
+                    </div>
                   )}
                 </div>
-
-                {/* Video Thumbnail (for likes and comments) */}
-                {notification.videoInfo && (notification.type === "like" || notification.type === "comment") && (
-                  <div className="mt-3 flex items-center gap-3">
-                    <div className="relative w-16 h-9 rounded overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-700">
-                      <Image
-                        src={notification.videoInfo.thumbnailUrl}
-                        alt={notification.videoInfo.title}
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 flex-1">
-                      {notification.videoInfo.title}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       )}
 

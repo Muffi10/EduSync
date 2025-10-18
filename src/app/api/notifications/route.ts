@@ -97,9 +97,10 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        return {
+        // Base notification object
+        const notification: any = {
           id: docSnap.id,
-          type: data.type, // "like", "comment", "follow"
+          type: data.type, // "like", "comment", "follow", "watch_party_invite"
           message: data.message,
           read: data.read || false,
           createdAt: data.createdAt,
@@ -107,6 +108,35 @@ export async function GET(req: NextRequest) {
           videoInfo,
           commentInfo,
         };
+
+        // Add watch party specific fields if it's a watch party invite
+        if (data.type === "watch_party_invite") {
+          notification.partyId = data.partyId;
+          notification.partyTitle = data.partyTitle;
+          notification.videoTitle = data.videoTitle;
+          notification.videoThumbnail = data.videoThumbnail;
+          notification.partyLink = data.partyLink;
+
+          // Check if party still exists and is active
+          if (data.partyId) {
+            try {
+              const partyDocRef = doc(db, "watchParties", data.partyId);
+              const partyDoc = await getDoc(partyDocRef);
+              
+              if (partyDoc.exists()) {
+                const partyData = partyDoc.data();
+                notification.partyActive = partyData.status !== "ended";
+              } else {
+                notification.partyActive = false;
+              }
+            } catch (error) {
+              console.error("Error checking party status:", error);
+              notification.partyActive = false;
+            }
+          }
+        }
+
+        return notification;
       })
     );
 

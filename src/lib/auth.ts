@@ -11,7 +11,8 @@ if (!getApps().length) {
       clientEmail: process.env.ADMIN_CLIENT_EMAIL,
       privateKey: process.env.ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     }),
-    storageBucket: "edusynctube.firebasestorage.app", // ✅ Fixed bucket name
+    storageBucket: "edusynctube.firebasestorage.app",
+    databaseURL: "https://edusynctube-default-rtdb.asia-southeast1.firebasedatabase.app", // ✅ Added Realtime Database URL
   });
 }
 
@@ -25,6 +26,11 @@ export const verifyFirebaseToken = async (token: string) => {
   }
 };
 
-// 🔑 Storage Admin - Fixed bucket name
-export const adminStorage = admin.storage().bucket("edusynctube.firebasestorage.app"); // ✅ Fixed bucket name
+// 🔑 Storage Admin
+export const adminStorage = admin.storage().bucket("edusynctube.firebasestorage.app");
+
+// 🔑 Firestore Admin
 export const adminDb = admin.firestore();
+
+// 🔑 Realtime Database Admin
+export const adminRtdb = admin.database();

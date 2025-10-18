@@ -1,10 +1,12 @@
 
 //src/lib/firebase.ts
+//src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
+import { getDatabase } from "firebase/database"; // NEW: Realtime Database
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
@@ -14,6 +16,7 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID!,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL!, // NEW: Required for Realtime DB
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -24,5 +27,6 @@ const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
+const realtimeDb = getDatabase(app); // NEW: Realtime Database instance
 
-export { app, auth, db, storage, analytics };
+export { app, auth, db, storage, analytics, realtimeDb };
