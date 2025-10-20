@@ -1,3 +1,4 @@
+//src/components/videoFeed.tsx
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -96,106 +97,123 @@ export default function VideoFeed() {
     }
   }, [convertFirestoreTimestamp]);
 
-  const fetchVideosWithOwners = useCallback(async (isInitial: boolean = false) => {
-    if (!hasMore && !isInitial) return;
+const fetchVideosWithOwners = useCallback(async (isInitial: boolean = false) => {
+  if (!hasMore && !isInitial) return;
+  
+  try {
+    if (isInitial) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    const limit = isInitial ? initialLoadSize : 9;
+    const url = lastDoc && !isInitial 
+      ? `/api/video?lastDoc=${lastDoc}&limit=${limit}` 
+      : `/api/video?limit=${limit}`;
     
-    try {
-      if (isInitial) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
-
-      const limit = isInitial ? initialLoadSize : 9;
-      const url = lastDoc && !isInitial 
-        ? `/api/video?lastDoc=${lastDoc}&limit=${limit}` 
-        : `/api/video?limit=${limit}`;
-      
-      const res = await fetch(url, {
-        headers: {
-          "Cache-Control": "no-cache",
-          Pragma: "no-cache",
-        },
-      });
-
-      if (!res.ok) {
-        console.warn("Failed to fetch videos, status:", res.status);
-        setHasMore(false);
-        return;
-      }
-
-      const data = await res.json();
-      
-      if (!data.videos || data.videos.length === 0) {
-        setHasMore(false);
-        return;
-      }
-
-      // Batch fetch owner data for better performance
-      const ownerIds = [...new Set(data.videos.map((v: Video) => v.ownerId))];
-      const ownerPromises = ownerIds.map(async (ownerId) => {
-        try {
-          const ownerRes = await fetch(`/api/user/${ownerId}`, {
-            headers: {
-              "Cache-Control": "public, max-age=300", // Cache owner data for 5 minutes
-            },
-          });
-          
-          if (!ownerRes.ok) throw new Error("Failed to fetch owner");
-          const ownerData = await ownerRes.json();
-          
-          return {
-            id: ownerId,
-            displayName: ownerData.user?.displayName || "Unknown Creator",
-            photoURL: ownerData.user?.photoURL || "/images/default-avatar.png",
-          };
-        } catch (err) {
-          console.error("Error fetching owner:", err);
-          return {
-            id: ownerId,
-            displayName: "Unknown Creator",
-            photoURL: "/images/default-avatar.png",
-          };
-        }
-      });
-
-      const owners = await Promise.all(ownerPromises);
-      const ownersMap = new Map(owners.map(owner => [owner.id, owner]));
-
-      const videosWithOwners = data.videos.map((video: Video) => ({
-        ...video,
-        owner: ownersMap.get(video.ownerId) || {
-          displayName: "Unknown Creator",
-          photoURL: "/images/default-avatar.png",
-        },
-      }));
-
-      if (isInitial) {
-        setVideos(videosWithOwners);
-        setScreenFilled(true);
-      } else {
-          setVideos((prev) => [
-              ...prev,
-              ...videosWithOwners.filter(
-                (v: VideoWithOwner) => !prev.some((p: VideoWithOwner) => p.id === v.id)
-              ),
-            ]);
-      }
-
-      setLastDoc(data.lastDoc || null);
-      setHasMore(!!data.lastDoc && data.videos.length === limit);
-      
-    } catch (err) {
-      console.error("Error fetching videos:", err);
-      setHasMore(false);
-    } finally {
-      if (isInitial) {
-        setLoading(false);
-      } else {
-        setLoadingMore(false);
+    // Get auth token for personalized recommendations
+    const auth = (await import("firebase/auth")).getAuth();
+    const user = auth.currentUser;
+    let idToken = null;
+    
+    if (user) {
+      try {
+        idToken = await user.getIdToken();
+      } catch (error) {
+        console.warn("Could not get auth token:", error);
       }
     }
-  }, [lastDoc, hasMore, initialLoadSize]);
+    
+    const headers: HeadersInit = {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    };
+    
+    if (idToken) {
+      headers["Authorization"] = `Bearer ${idToken}`;
+    }
+    
+    const res = await fetch(url, { headers });
+
+    if (!res.ok) {
+      console.warn("Failed to fetch videos, status:", res.status);
+      setHasMore(false);
+      return;
+    }
+
+    const data = await res.json();
+    
+    if (!data.videos || data.videos.length === 0) {
+      setHasMore(false);
+      return;
+    }
+
+    // Batch fetch owner data for better performance
+    const ownerIds = [...new Set(data.videos.map((v: Video) => v.ownerId))];
+    const ownerPromises = ownerIds.map(async (ownerId) => {
+      try {
+        const ownerRes = await fetch(`/api/user/${ownerId}`, {
+          headers: {
+            "Cache-Control": "public, max-age=300", // Cache owner data for 5 minutes
+          },
+        });
+        
+        if (!ownerRes.ok) throw new Error("Failed to fetch owner");
+        const ownerData = await ownerRes.json();
+        
+        return {
+          id: ownerId,
+          displayName: ownerData.user?.displayName || "Unknown Creator",
+          photoURL: ownerData.user?.photoURL || "/images/default-avatar.png",
+        };
+      } catch (err) {
+        console.error("Error fetching owner:", err);
+        return {
+          id: ownerId,
+          displayName: "Unknown Creator",
+          photoURL: "/images/default-avatar.png",
+        };
+      }
+    });
+
+    const owners = await Promise.all(ownerPromises);
+    const ownersMap = new Map(owners.map(owner => [owner.id, owner]));
+
+    const videosWithOwners = data.videos.map((video: Video) => ({
+      ...video,
+      owner: ownersMap.get(video.ownerId) || {
+        displayName: "Unknown Creator",
+        photoURL: "/images/default-avatar.png",
+      },
+    }));
+
+    if (isInitial) {
+      setVideos(videosWithOwners);
+      setScreenFilled(true);
+    } else {
+      setVideos((prev) => [
+        ...prev,
+        ...videosWithOwners.filter(
+          (v: VideoWithOwner) => !prev.some((p: VideoWithOwner) => p.id === v.id)
+        ),
+      ]);
+    }
+
+    setLastDoc(data.lastDoc || null);
+    setHasMore(!!data.lastDoc && data.videos.length === limit);
+    
+  } catch (err) {
+    console.error("Error fetching videos:", err);
+    setHasMore(false);
+  } finally {
+    if (isInitial) {
+      setLoading(false);
+    } else {
+      setLoadingMore(false);
+    }
+  }
+}, [lastDoc, hasMore, initialLoadSize]);
 
   // Initial load - only after client hydration
   useEffect(() => {
