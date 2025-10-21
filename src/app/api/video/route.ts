@@ -1,4 +1,4 @@
-// api/video/route.ts
+// src/app/api/video/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyFirebaseToken } from "@/lib/auth";
 import { db } from "@/lib/firebase";
