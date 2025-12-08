@@ -9,7 +9,7 @@ interface Props {
   followersCount: number;
   followingCount: number;
   currentUid: string | null;
-  videosCount: number; // Added videosCount prop
+  videosCount: number;
 }
 
 export default function FollowStats({
@@ -17,30 +17,38 @@ export default function FollowStats({
   followersCount,
   followingCount,
   currentUid,
-  videosCount, // Added videosCount prop
+  videosCount,
 }: Props) {
   const [openModal, setOpenModal] = useState<null | "followers" | "following">(null);
 
   return (
     <>
-      <div className="flex gap-8">
-        <div className="text-center">
-          <span className="block text-lg font-semibold">{videosCount}</span>
-          <span className="text-sm text-gray-500">Videos</span>
+      <div className="flex gap-12">
+        <div className="text-center cursor-default">
+          <span className="block text-2xl font-bold text-white">{videosCount}</span>
+          <span className="text-sm text-gray-400">Videos</span>
         </div>
         <div
-          onClick={() => setOpenModal("followers")}
-          className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => currentUid && setOpenModal("followers")}
+          className={`text-center transition-all duration-200 ${
+            currentUid 
+              ? "cursor-pointer hover:scale-105 transform" 
+              : "cursor-default"
+          }`}
         >
-          <span className="block text-lg font-semibold">{followersCount}</span>
-          <span className="text-sm text-gray-500">Followers</span>
+          <span className="block text-2xl font-bold text-white">{followersCount}</span>
+          <span className="text-sm text-gray-400">Followers</span>
         </div>
         <div
-          onClick={() => setOpenModal("following")}
-          className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => currentUid && setOpenModal("following")}
+          className={`text-center transition-all duration-200 ${
+            currentUid 
+              ? "cursor-pointer hover:scale-105 transform" 
+              : "cursor-default"
+          }`}
         >
-          <span className="block text-lg font-semibold">{followingCount}</span>
-          <span className="text-sm text-gray-500">Following</span>
+          <span className="block text-2xl font-bold text-white">{followingCount}</span>
+          <span className="text-sm text-gray-400">Following</span>
         </div>
       </div>
 

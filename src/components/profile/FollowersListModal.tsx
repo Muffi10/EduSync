@@ -41,7 +41,7 @@ export default function FollowersListModal({ type, userId, onClose, currentUid }
     try {
       setUpdating(targetId);
       
-      const token = await getAuthToken(); // You'll need to implement this
+      const token = await getAuthToken();
       if (!token) throw new Error("Not authenticated");
 
       const method = isFollowing ? "DELETE" : "POST";
@@ -72,10 +72,12 @@ export default function FollowersListModal({ type, userId, onClose, currentUid }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-md max-h-[80vh] flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-center capitalize">{type}</h2>
+    <div className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4">
+      <div className="bg-black border border-gray-800 rounded-lg w-full max-w-md max-h-[80vh] flex flex-col">
+        <div className="p-6 border-b border-gray-800">
+          <h2 className="text-xl font-semibold text-center capitalize text-white">
+            {type === 'followers' ? 'Followers' : 'Following'}
+          </h2>
         </div>
         
         <div className="overflow-y-auto flex-1">
@@ -84,35 +86,35 @@ export default function FollowersListModal({ type, userId, onClose, currentUid }
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
           ) : list.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-400">
               No {type} found
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-gray-800">
               {list.map((user) => (
-                <li key={user.id} className="p-4">
+                <li key={user.id} className="p-4 hover:bg-gray-900 transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-800 flex-shrink-0">
                         <Image
-                          src={user.profilePic || "/default-avatar.png"}
+                          src={user.profilePic || "/images/default-avatar.png"}
                           alt={user.username}
-                          width={40}
-                          height={40}
+                          width={48}
+                          height={48}
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <span className="font-medium">{user.username}</span>
+                      <span className="font-medium text-white">{user.username}</span>
                     </div>
                     {user.id !== currentUid && (
                       <button
                         onClick={() => handleToggleFollow(user.id, user.isFollowing)}
                         disabled={updating === user.id}
-                        className={`text-sm px-4 py-1.5 rounded-full font-medium ${
+                        className={`text-sm px-6 py-2 rounded-full font-medium transition-all duration-200 ${
                           user.isFollowing
-                            ? "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                            : "bg-blue-500 text-white hover:bg-blue-600"
-                        } transition-colors`}
+                            ? "bg-gray-800 text-white hover:bg-gray-700 border border-gray-700"
+                            : "bg-blue-600 text-white hover:bg-blue-700"
+                        } disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px]`}
                       >
                         {updating === user.id ? "..." : user.isFollowing ? "Unfollow" : "Follow"}
                       </button>
@@ -126,7 +128,7 @@ export default function FollowersListModal({ type, userId, onClose, currentUid }
 
         <button
           onClick={onClose}
-          className="p-4 text-center border-t border-gray-200 text-blue-500 font-medium hover:bg-gray-50 rounded-b-lg"
+          className="p-6 text-center border-t border-gray-800 text-blue-500 font-medium hover:bg-gray-900 transition-colors rounded-b-lg text-lg"
         >
           Close
         </button>
