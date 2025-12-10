@@ -1,6 +1,6 @@
 // src/app/watch/[videoId]/page.tsx
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState,useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import { db } from "@/lib/firebase";
@@ -10,6 +10,7 @@ import RecommendedVideos from "@/components/RecommendedVideos";
 import Image from "next/image";
 import Link from "next/link";
 import { use } from "react";
+import { Timestamp } from "firebase/firestore";
 
 export default function WatchPage({ params }: { params: Promise<{ videoId: string }> }) {
   const { videoId } = use(params);
@@ -221,25 +222,46 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
     }
   };
 
-  const formatDate = (dateValue: any) => {
-    if (!dateValue) return "Date unknown";
-    
+  // Convert Firestore timestamp to readable date
+  const formatDate = (value: any): string => {
     try {
-      if (dateValue?.toDate && typeof dateValue.toDate === 'function') {
-        return dateValue.toDate().toLocaleDateString();
+      if (!value) return "";
+
+      // Firestore value
+      if (value?.seconds) {
+        return new Date(value.seconds * 1000).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
       }
-      
-      const date = new Date(dateValue);
-      if (isNaN(date.getTime())) {
-        return "Date unknown";
+
+      // String date
+      if (typeof value === "string") {
+        const parsed = new Date(value);
+        if (!isNaN(parsed.getTime())) {
+          return parsed.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+          });
+        }
       }
-      
-      return date.toLocaleDateString();
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Date unknown";
+
+      // JS Date
+      if (value instanceof Date) {
+        return value.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+      }
+
+      return "";
+    } catch {
+      return "";
     }
-  };
+  }
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState,useCallback } from "react";
 import axios from "axios";
 import Image from "next/image";
 import { getAuth } from "firebase/auth";
@@ -95,6 +95,46 @@ export default function CommentSection({ videoId }: Props) {
       loadUserData();
     }
   }, [comments]);
+
+ const formatDate = useCallback((timestamp: any): string => {
+    try {
+      if (!timestamp) return "";
+
+      // Firestore Timestamp
+      if (timestamp?.seconds) {
+        return new Date(timestamp.seconds * 1000).toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+      }
+
+      // String date
+      if (typeof timestamp === "string") {
+        const parsed = new Date(timestamp);
+        if (!isNaN(parsed.getTime())) {
+          return parsed.toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+          });
+        }
+      }
+
+      // JS Date
+      if (timestamp instanceof Date) {
+        return timestamp.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+      }
+
+      return "";
+    } catch {
+      return "";
+    }
+  }, []);
 
   const handleSubmit = async () => {
     if (!newComment.trim() || !currentUser) return;
@@ -191,11 +231,7 @@ export default function CommentSection({ videoId }: Props) {
                     {userDisplayNames[comment.userId] || "Anonymous"}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {new Date(comment.createdAt).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {formatDate(comment.createdAt)}
                   </span>
                 </div>
                 <p className="text-gray-800 dark:text-gray-200">{comment.text}</p>

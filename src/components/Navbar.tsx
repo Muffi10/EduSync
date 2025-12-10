@@ -146,56 +146,138 @@ export default function Navbar() {
   return (
     <header className="w-full h-14 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
       {/* Mobile Search Overlay */}
-      {showMobileSearch && (
-        <div className="md:hidden absolute top-0 left-0 right-0 bottom-0 bg-white dark:bg-gray-900 z-50 p-4 flex items-center">
-          <div className="flex items-center w-full" ref={mobileSearchRef}>
-            <button
-              onClick={() => setShowMobileSearch(false)}
-              className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+{showMobileSearch && (
+  <div className="md:hidden absolute top-0 left-0 right-0 bottom-0 bg-white dark:bg-gray-900 z-50 p-4" ref={mobileSearchRef}>
+    <div className="flex items-center w-full mb-4">
+      <button
+        onClick={() => setShowMobileSearch(false)}
+        className="p-2 mr-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <form onSubmit={handleMobileSearch} className="flex-1 flex">
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            placeholder="Search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full h-10 pl-4 pr-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-l-full focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-sm"
+            autoFocus
+          />
+          {searchLoading && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <svg className="animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-            </button>
-            <form onSubmit={handleMobileSearch} className="flex-1 flex">
-              <input
-                type="text"
-                placeholder="Search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 h-10 px-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-l-full focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-sm"
-                autoFocus
-              />
-              <button
-                type="submit"
-                className="h-10 px-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-full"
-              >
-                <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            </div>
+          )}
+        </div>
+        <button
+          type="submit"
+          className="h-10 px-4 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-full"
+        >
+          <svg className="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    {/* Search Results Dropdown for Mobile - Same style as desktop but responsive */}
+    {searchResults.length > 0 && (
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-[60vh] overflow-y-auto z-50">
+        {searchResults.map((result) => (
+          <button
+            key={`${result.type}-${result.id}`}
+            onClick={() => handleSearchResultClick(result)}
+            className="w-full p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center space-x-3 text-left border-b border-gray-100 dark:border-gray-700 last:border-b-0"
+          >
+            {result.type === 'video' ? (
+              <>
+                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {result.title}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Video</p>
+                </div>
+                {result.thumbnail && (
+                  <div className="relative w-16 h-10 flex-shrink-0">
+                    <Image
+                      src={result.thumbnail}
+                      alt={result.title}
+                      fill
+                      className="rounded object-cover"
+                      sizes="64px"
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    {result.displayName || result.title}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">User</p>
+                </div>
+                <div className="relative w-8 h-8 flex-shrink-0">
+                  <Image
+                    src={result.photoURL || '/images/default-avatar.png'}
+                    alt={result.displayName || 'User'}
+                    fill
+                    className="rounded-full object-cover"
+                    sizes="32px"
+                  />
+                </div>
+              </>
+            )}
+          </button>
+        ))}
+      </div>
+    )}
 
-      <div className="h-full px-4 flex items-center justify-between">
+    {/* Show message when no results */}
+    {!searchLoading && search.trim() && searchResults.length === 0 && (
+      <div className="mt-4 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg">
+        <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
+          No results found for "{search}"
+        </p>
+      </div>
+    )}
+
+    {/* Show placeholder when no search query */}
+    {!searchLoading && !search.trim() && (
+      <div className="mt-4 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg">
+        <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
+          Start typing to search...
+        </p>
+      </div>
+    )}
+  </div>
+)}
+
+      <div className="h-full px-1 flex items-center justify-between">
         {/* Left side - Menu & Logo */}
         <div className="flex items-center space-x-4 min-w-0 flex-shrink-0">
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full md:hidden">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-            </svg>
-          </button>
           
           <Link href="/" className="flex items-center space-x-1 flex-shrink-0">
             <Image 
               src="/images/edusync_logo.png" 
               alt="EduSync" 
-              width={120}
-              height={40}
-              className="h-10 w-auto object-contain"
-              priority
+              width={300}
+              height={120}
+              className="h-40 w-40 object-contain"
+              priority={true}
             />
           </Link>
         </div>
@@ -257,8 +339,8 @@ export default function Navbar() {
                             <Image
                               src={result.thumbnail}
                               alt={result.title}
-                              width={60}
-                              height={34}
+                              width={40}
+                              height={24}
                               className="rounded object-cover flex-shrink-0"
                             />
                           )}
@@ -277,8 +359,8 @@ export default function Navbar() {
                           <Image
                             src={result.photoURL || '/images/default-avatar.png'}
                             alt={result.displayName || 'User'}
-                            width={32}
-                            height={32}
+                            width={30}
+                            height={30}
                             className="rounded-full object-cover flex-shrink-0"
                           />
                         </>
@@ -308,16 +390,7 @@ export default function Navbar() {
               <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
             ) : user ? (
               <>
-                {/* Create Video Button */}
-                <Link 
-                  href="/upload" 
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-                  title="Create"
-                >
-                  <svg className="w-6 h-6 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </Link>
+                
 
                 {/* Notifications */}
                 <Link 
@@ -375,12 +448,13 @@ export default function Navbar() {
                         Your channel
                       </Link>
                       <Link
-                        href="/settings"
+                        href="/upload"
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() => setShowProfileMenu(false)}
                       >
-                        Settings
+                        Upload Video
                       </Link>
+                      
                       <hr className="my-2 border-gray-200 dark:border-gray-600" />
                       <button
                         onClick={handleLogout}
