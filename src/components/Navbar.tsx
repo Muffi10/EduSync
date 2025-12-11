@@ -268,7 +268,7 @@ export default function Navbar() {
 
       <div className="h-full px-1 flex items-center justify-between">
         {/* Left side - Menu & Logo */}
-        <div className="flex items-center space-x-4 min-w-0 flex-shrink-0">
+        <div className="flex items-center space-x-2 min-w-0 flex-shrink-0 mr-5">
           
           <Link href="/" className="flex items-center space-x-1 flex-shrink-0">
             <Image 
@@ -404,7 +404,7 @@ export default function Navbar() {
                 </Link>
 
                 {/* Profile Menu */}
-                <div className="relative" ref={profileRef}>
+                <div className="relative mr-3" ref={profileRef}>
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"

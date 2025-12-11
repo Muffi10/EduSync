@@ -480,25 +480,25 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
             {creator && (
               <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-6">
                 <Link
-                  href={`/channel/${creator.username}`}
+                  href={`/profile/${creator.user.uid}`}
                   className="flex items-center space-x-3 cursor-pointer group"
                 >
                   <div className="relative h-12 w-12 rounded-full overflow-hidden">
                     <Image
-                      src={creator.photoURL || "/images/default-avatar.png"}
-                      alt={`${creator.displayName}'s profile picture`}
+                      src={creator.user.photoURL || "/images/default-avatar.png"}
+                      alt={`${creator.user.displayName}'s profile picture`}
                       fill
                       className="object-cover group-hover:scale-110 transition-transform"
                     />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
-                      {creator.displayName}
+                      {creator.user.displayName}
                     </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">@{creator.username}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{creator.username}</p>
                   </div>
                 </Link>
-                {user?.uid && user.uid !== creator.uid && (
+                {user?.uid && user.uid !== creator.user.uid && (
                   <button
                     onClick={handleFollow}
                     className={`px-6 py-2 rounded-full font-medium transition-all ${
