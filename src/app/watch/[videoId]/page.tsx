@@ -1,6 +1,6 @@
 // src/app/watch/[videoId]/page.tsx
 "use client";
-import { useEffect, useState,useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import { db } from "@/lib/firebase";
@@ -10,7 +10,6 @@ import RecommendedVideos from "@/components/RecommendedVideos";
 import Image from "next/image";
 import Link from "next/link";
 import { use } from "react";
-import { Timestamp } from "firebase/firestore";
 
 export default function WatchPage({ params }: { params: Promise<{ videoId: string }> }) {
   const { videoId } = use(params);
@@ -58,14 +57,22 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
 
           // Check follow status if not the creator
           if (videoData.ownerId !== currentUser.uid) {
-            const followRes = await fetch(
-              `/api/follow/status?userId=${currentUser.uid}&targetUserId=${videoData.ownerId}`,
-              {
-                headers: { Authorization: `Bearer ${idToken}` },
+            try {
+              const followRes = await fetch(
+                `/api/follow/status?userId=${currentUser.uid}&targetUserId=${videoData.ownerId}`,
+                {
+                  headers: { Authorization: `Bearer ${idToken}` },
+                }
+              );
+              
+              if (followRes.ok) {
+                const followData = await followRes.json();
+                setIsFollowing(followData.isFollowing || false);
               }
-            );
-            const { isFollowing } = await followRes.json();
-            setIsFollowing(isFollowing);
+            } catch (error) {
+              console.error("Error checking follow status:", error);
+              setIsFollowing(false);
+            }
           }
 
           // Check if video is already in history
@@ -144,7 +151,7 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
     setIsFollowing(newFollowStatus);
 
     try {
-      await fetch("/api/follow", {
+      const response = await fetch("/api/follow", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -155,7 +162,12 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
           follow: newFollowStatus,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to update follow status");
+      }
     } catch (error) {
+      console.error("Follow error:", error);
       setIsFollowing(!newFollowStatus);
     }
   };
@@ -336,7 +348,7 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Like Button */}
+                  {/* Like Button - Always show */}
                   <button
                     onClick={handleLike}
                     disabled={!token}
@@ -363,45 +375,8 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
                     <span className="font-medium">{likeCount.toLocaleString()}</span>
                   </button>
 
-                  {/* Follow Button */}
-                  {user?.uid && user.uid !== video.ownerId && (
-                    <button
-                      onClick={handleFollow}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-full font-medium transition-all ${
-                        isFollowing
-                          ? "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                          : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-                      }`}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        {isFollowing ? (
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        ) : (
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        )}
-                      </svg>
-                      <span>{isFollowing ? "Following" : "Follow"}</span>
-                    </button>
-                  )}
-
-                  {/* Watch Party Button */}
-                  {user?.uid && (
+                  {/* Watch Party Button - Always show if logged in */}
+                  {token && user?.uid && (
                     <button
                       onClick={handleCreateWatchParty}
                       disabled={isCreatingParty}
@@ -427,8 +402,8 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
                     </button>
                   )}
 
-                  {/* Report Button */}
-                  {user?.uid && (
+                  {/* Report Button - Always show if logged in */}
+                  {token && user?.uid && (
                     <button
                       onClick={handleReport}
                       disabled={isReporting}
@@ -476,12 +451,12 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
               </div>
             </div>
 
-            {/* Creator Info */}
+            {/* Creator Info with Follow Button */}
             {creator && (
               <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg mb-6">
                 <Link
                   href={`/profile/${creator.user.uid}`}
-                  className="flex items-center space-x-3 cursor-pointer group"
+                  className="flex items-center space-x-3 cursor-pointer group flex-1"
                 >
                   <div className="relative h-12 w-12 rounded-full overflow-hidden">
                     <Image
@@ -491,17 +466,19 @@ export default function WatchPage({ params }: { params: Promise<{ videoId: strin
                       className="object-cover group-hover:scale-110 transition-transform"
                     />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 transition-colors">
                       {creator.user.displayName}
                     </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">{creator.username}</p>
                   </div>
                 </Link>
-                {user?.uid && user.uid !== creator.user.uid && (
+                
+                {/* Follow Button - Only show if user is logged in and not the creator */}
+                {token && user?.uid && user.uid !== creator.user.uid && (
                   <button
                     onClick={handleFollow}
-                    className={`px-6 py-2 rounded-full font-medium transition-all ${
+                    className={`px-6 py-2 rounded-full font-medium transition-all min-w-[120px] ${
                       isFollowing
                         ? "bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                         : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
