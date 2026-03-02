@@ -39,6 +39,10 @@ export default function ProfilePage() {
   const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  
+  // Delete confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
 
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -209,19 +213,23 @@ export default function ProfilePage() {
 
   const isOwner = useMemo(() => currentUid && currentUid === id, [currentUid, id]);
 
-  const handleDelete = async (videoId: string) => {
-    const confirmDel = confirm("Delete this video? This action cannot be undone.");
-    if (!confirmDel) return;
+  const handleDeleteClick = (video: Video) => {
+    setVideoToDelete(video);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!videoToDelete) return;
 
     try {
-      setDeletingId(videoId);
+      setDeletingId(videoToDelete.id);
       setError(null);
 
       const auth = getAuth();
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) throw new Error("Not authenticated");
 
-      const res = await fetch(`/api/video/${videoId}`, {
+      const res = await fetch(`/api/video/${videoToDelete.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${idToken}`,
@@ -234,13 +242,20 @@ export default function ProfilePage() {
         throw new Error(err.error || err.message || "Failed to delete video");
       }
 
-      setVideos((prev) => prev.filter((v) => v.id !== videoId));
+      setVideos((prev) => prev.filter((v) => v.id !== videoToDelete.id));
+      setShowDeleteModal(false);
+      setVideoToDelete(null);
     } catch (err: unknown) {
       console.error("Delete failed:", err);
       setError(err instanceof Error ? err.message : "Delete failed");
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setVideoToDelete(null);
   };
 
   const handleEdit = (videoId: string) => {
@@ -586,6 +601,35 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && videoToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+              Delete Video
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Are you sure you want to delete "{videoToDelete.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleDeleteCancel}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deletingId === videoToDelete.id}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingId === videoToDelete.id ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Error Display (non-fatal errors) */}
       {error && user && (
         <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
@@ -686,7 +730,7 @@ export default function ProfilePage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(video.id);
+                          handleDeleteClick(video);
                         }}
                         disabled={deletingId === video.id}
                         className="p-1 text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-50"
@@ -706,4 +750,4 @@ export default function ProfilePage() {
       </div>
     </div>
   );
-}//the end
+}
