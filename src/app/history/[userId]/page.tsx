@@ -375,7 +375,7 @@ export default function WatchHistoryPage() {
 
             return (
               <div key={dateGroup} className="border-b border-gray-200 dark:border-gray-700 pb-8 last:border-b-0">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 sticky top-0 bg-white dark:bg-gray-900 py-2 z-10">
+                <h2 className="rounded-lg text-xl font-semibold text-gray-900 dark:text-white mb-6 sticky top-0 bg-white dark:bg-gray-900 py-2 px-2 z-10">
                   {dateGroup}
                 </h2>
                 <div className="grid gap-4">
