@@ -152,170 +152,178 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
-      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 space-y-6">
-        <div className="flex justify-center">
-          <Image 
-            src="/images/edusync_logo.png" 
-            alt="Edusync" 
-            width={48} 
-            height={48}
-            className="dark:invert"
-          />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 m-2">
+      <div className="w-full max-w-7xl bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden flex">
+        {/* Left side - Image */}
+        <div className="hidden md:block w-full   bg-gradient-to-br from-blue-500 to-purple-600">
+          <div className="h-full w-full relative">
+            <Image
+              src="/images/signup.jpg"
+              alt="Signup illustration"
+              fill
+              className="object-cover "
+              priority
+            />
+          </div>
         </div>
 
-        <h2 className="text-center text-2xl font-semibold text-gray-900 dark:text-white">
-          {isSignup ? 'Create your account' : 'Sign in to Edusync'}
-        </h2>
+        {/* Right side - Form */}
+        <div className="w-full md:w-1/2 p-8 space-y-6">
+          
 
-        <div className="space-y-4">
-          {isSignup && (
-            <>
-              <div className="space-y-1">
-                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Display Name
-                </label>
-                <input
-                  id="displayName"
-                  type="text"
-                  placeholder="Enter your name"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Username
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  placeholder="Choose a username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-            </>
-          )}
+          <h2 className="text-center text-2xl font-semibold text-gray-900 dark:text-white">
+            {isSignup ? 'Create your account' : 'Sign in to Edusync'}
+          </h2>
 
-          <div className="space-y-1">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={`w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                !emailValid ? 'border-red-500' : ''
-              }`}
-              required
-              autoFocus
-            />
-            {!emailValid && (
-              <p className="text-sm text-red-500">Please enter a valid email</p>
+          <div className="space-y-4">
+            {isSignup && (
+              <>
+                <div className="space-y-1">
+                  <label htmlFor="displayName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Display Name
+                  </label>
+                  <input
+                    id="displayName"
+                    type="text"
+                    placeholder="Enter your name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Username
+                  </label>
+                  <input
+                    id="username"
+                    type="text"
+                    placeholder="Choose a username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </>
             )}
-          </div>
 
-          <div className="space-y-1">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Password
-            </label>
-            <div className="relative">
+            <div className="space-y-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
+              </label>
               <input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className={`w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  !passwordValid ? 'border-red-500' : ''
+                  !emailValid ? 'border-red-500' : ''
                 }`}
                 required
+                autoFocus
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              >
-                {showPassword ? 'Hide' : 'Show'}
-              </button>
+              {!emailValid && (
+                <p className="text-sm text-red-500">Please enter a valid email</p>
+              )}
             </div>
-            {!passwordValid && (
-              <p className="text-sm text-red-500">Password must be at least 6 characters</p>
+
+            <div className="space-y-1">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg bg-gray-50 dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    !passwordValid ? 'border-red-500' : ''
+                  }`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {!passwordValid && (
+                <p className="text-sm text-red-500">Password must be at least 6 characters</p>
+              )}
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
+                {error}
+              </div>
             )}
+
+            <button
+              onClick={handleEmailAuth}
+              disabled={loading || !emailValid || !passwordValid || (isSignup && (!username || !displayName))}
+              className={`w-full py-2 rounded-lg text-white font-medium transition ${
+                loading || !emailValid || !passwordValid || (isSignup && (!username || !displayName))
+                  ? 'bg-blue-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+              }`}
+            >
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </span>
+              ) : isSignup ? (
+                'Sign Up'
+              ) : (
+                'Sign In'
+              )}
+            </button>
           </div>
 
-          {error && (
-            <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
-              {error}
-            </div>
-          )}
+          <div className="flex items-center space-x-2">
+            <hr className="flex-1 border-gray-300 dark:border-gray-600" />
+            <span className="text-xs text-gray-500">OR</span>
+            <hr className="flex-1 border-gray-300 dark:border-gray-600" />
+          </div>
 
           <button
-            onClick={handleEmailAuth}
-            disabled={loading || !emailValid || !passwordValid || (isSignup && (!username || !displayName))}
-            className={`w-full py-2 rounded-lg text-white font-medium transition ${
-              loading || !emailValid || !passwordValid || (isSignup && (!username || !displayName))
-                ? 'bg-blue-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
-            }`}
+            onClick={handleGoogleAuth}
+            disabled={loading}
+            className="w-full py-2 flex items-center justify-center space-x-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Processing...
-              </span>
-            ) : isSignup ? (
-              'Sign Up'
-            ) : (
-              'Sign In'
-            )}
+            <Image 
+              src="/images/google.png" 
+              alt="Google" 
+              width={20} 
+              height={20} 
+              className="dark:invert"
+            />
+            <span>Continue with Google</span>
           </button>
+
+          <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+            {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              onClick={() => {
+                setIsSignup(!isSignup);
+                resetForm();
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+            >
+              {isSignup ? 'Sign in' : 'Sign up'}
+            </button>
+          </p>
         </div>
-
-        <div className="flex items-center space-x-2">
-          <hr className="flex-1 border-gray-300 dark:border-gray-600" />
-          <span className="text-xs text-gray-500">OR</span>
-          <hr className="flex-1 border-gray-300 dark:border-gray-600" />
-        </div>
-
-        <button
-          onClick={handleGoogleAuth}
-          disabled={loading}
-          className="w-full py-2 flex items-center justify-center space-x-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          <Image 
-            src="/images/google.png" 
-            alt="Google" 
-            width={20} 
-            height={20} 
-            className="dark:invert"
-          />
-          <span>Continue with Google</span>
-        </button>
-
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-          {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <button
-            onClick={() => {
-              setIsSignup(!isSignup);
-              resetForm();
-            }}
-            className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-          >
-            {isSignup ? 'Sign in' : 'Sign up'}
-          </button>
-        </p>
       </div>
     </div>
   );
