@@ -274,8 +274,8 @@ export default function Navbar() {
             <Image 
               src="/images/edusync_logo.png" 
               alt="EduSync" 
-              width={300}
-              height={120}
+              width={280}
+              height={110}
               className="h-40 w-40 object-contain"
               priority={true}
             />
