@@ -695,9 +695,7 @@ export default function ProfilePage() {
                         </svg>
                       </div>
                     )}
-                    <div className="absolute bottom-1 right-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
-                      {formatDuration(Number(video.duration)) || "0:00"}
-                    </div>
+                    
                   </div>
                 </div>
 
