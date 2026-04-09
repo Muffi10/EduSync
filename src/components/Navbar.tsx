@@ -454,6 +454,13 @@ export default function Navbar() {
                       >
                         Upload Video
                       </Link>
+                      <Link
+                        href="/trending"
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setShowProfileMenu(false)}
+                      >
+                        Trending Videos
+                      </Link>
                       
                       <hr className="my-2 border-gray-200 dark:border-gray-600" />
                       <button

@@ -245,11 +245,7 @@ export default function TrendingPage() {
                   </div>
 
                   {/* Duration Badge (if available) */}
-                  {video.duration && (
-                    <div className="absolute bottom-2 right-2 z-10 bg-black/80 text-white px-1.5 py-0.5 rounded text-xs font-medium">
-                      {video.duration}
-                    </div>
-                  )}
+                  
 
                   {/* Thumbnail with Lazy Loading */}
                   <div className="relative pb-[56.25%] overflow-hidden rounded-xl bg-gray-800">
