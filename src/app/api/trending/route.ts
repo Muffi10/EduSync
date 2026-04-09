@@ -25,6 +25,11 @@ interface Video {
   commentsCount: number;
   createdAt: number;
   trendingScore?: number;
+  owner?: {
+    displayName: string;
+    photoURL: string;
+    username: string;
+  };
 }
 
 export async function GET(req: NextRequest) {
